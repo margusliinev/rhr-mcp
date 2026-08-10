@@ -46,6 +46,8 @@ export default defineConfig({
         'eslint/func-style': 'off',
         'eslint/id-length': 'off',
         'eslint/sort-keys': 'off',
+        'eslint/sort-vars': 'off',
+        'eslint/one-var': 'off',
         'eslint/no-void': 'off',
         'eslint/curly': 'off',
 
@@ -84,15 +86,15 @@ export default defineConfig({
         {
             files: ['src/ingest/**'],
             rules: {
+                'eslint/no-use-before-define': 'off',
                 'eslint/no-await-in-loop': 'off',
                 'eslint/no-continue': 'off',
+                'eslint/no-eq-null': 'off',
                 'eslint/complexity': 'off',
+                'eslint/max-params': 'off',
+                'eslint/max-lines': 'off',
                 'eslint/max-depth': 'off',
                 'eslint/eqeqeq': 'off',
-                'eslint/no-eq-null': 'off',
-                'eslint/max-lines': 'off',
-                'eslint/max-params': 'off',
-                'eslint/no-use-before-define': 'off',
                 'unicorn/max-nested-calls': 'off',
                 'node/no-top-level-await': 'off'
             }
