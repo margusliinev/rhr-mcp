@@ -1,3 +1,15 @@
+import type {
+    AwardResultStatus,
+    Currency,
+    LotStatus,
+    OrganizationCountry,
+    ProcurementBuyerActivity,
+    ProcurementBuyerType,
+    ProcurementFrameworkType,
+    ProcurementProcedure,
+    ProcurementStatus,
+    ProcurementType
+} from '../mappings';
 import type { Generated, Insertable, Selectable, Updateable } from 'kysely';
 
 type Timestamps = {
@@ -10,7 +22,7 @@ type OrganizationTable = {
     registryCode: string;
     name: string;
     city: string | null;
-    country: string | null;
+    country: OrganizationCountry | null;
 } & Timestamps;
 
 type ProcurementTable = {
@@ -20,14 +32,14 @@ type ProcurementTable = {
     eformsId: string | null;
     title: string;
     description: string | null;
-    status: string | null;
-    type: string | null;
-    procedureCode: string | null;
+    status: ProcurementStatus | null;
+    type: ProcurementType | null;
+    procedureCode: ProcurementProcedure | null;
     mainCpv: string | null;
     estimatedValue: string | null;
-    currency: string | null;
-    frameworkType: string | null;
-    buyerActivity: string | null;
+    currency: Currency | null;
+    frameworkType: ProcurementFrameworkType | null;
+    buyerActivity: ProcurementBuyerActivity | null;
     periodStart: Date | null;
     periodEnd: Date | null;
     submissionDeadline: Date | null;
@@ -38,7 +50,7 @@ type ProcurementTable = {
 type ProcurementBuyerTable = {
     procurementId: string;
     organizationId: string;
-    buyerType: string | null;
+    buyerType: ProcurementBuyerType | null;
 } & Timestamps;
 
 type LotTable = {
@@ -47,10 +59,10 @@ type LotTable = {
     lotCode: string;
     title: string | null;
     description: string | null;
-    status: string | null;
+    status: LotStatus | null;
     mainCpv: string | null;
     estimatedValue: string | null;
-    currency: string | null;
+    currency: Currency | null;
     nutsCode: string | null;
     locationText: string | null;
     submissionDeadline: Date | null;
@@ -59,9 +71,9 @@ type LotTable = {
 type AwardTable = {
     id: string;
     lotId: string;
-    resultStatus: string | null;
+    resultStatus: AwardResultStatus | null;
     amount: string | null;
-    currency: string | null;
+    currency: Currency | null;
     contractTitle: string | null;
     contractDate: Date | null;
     tendersCount: number | null;

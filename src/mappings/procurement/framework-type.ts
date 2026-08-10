@@ -1,0 +1,12 @@
+const procurementFrameworkTypeMapping = {
+    'fa-mix': 'Framework mixed reopening',
+    'fa-w-rc': 'Framework with reopening',
+    'fa-wo-rc': 'Framework without reopening'
+} as const;
+
+type ProcurementFrameworkTypeCode = keyof typeof procurementFrameworkTypeMapping;
+type ProcurementFrameworkType = (typeof procurementFrameworkTypeMapping)[ProcurementFrameworkTypeCode];
+
+export { procurementFrameworkTypeMapping };
+
+export type { ProcurementFrameworkTypeCode, ProcurementFrameworkType };
