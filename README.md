@@ -64,7 +64,7 @@ bun run ingest
 bun run dev
 ```
 
-The MCP endpoint is available at `http://localhost:5000/mcp`.
+The MCP endpoint is available at `http://localhost:3002/mcp`.
 
 ## Use with Cursor
 
@@ -74,7 +74,7 @@ With the server running, add this to your Cursor MCP config (`.cursor/mcp.json`)
 {
     "mcpServers": {
         "RHR": {
-            "url": "http://localhost:5000/mcp"
+            "url": "http://localhost:3002/mcp"
         }
     }
 }
