@@ -5,7 +5,7 @@ services:
         restart: always
         environment:
             TZ: UTC
-            POSTGRES_DB: postgres
+            POSTGRES_DB: rhr
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: postgres
         ports:
