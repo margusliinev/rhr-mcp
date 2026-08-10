@@ -9,6 +9,7 @@ const main = async () => {
     const startedAt = Date.now();
 
     const { organizationDrafts, procurementDrafts } = await loadNoticeDrafts();
+
     await ingestOrganizations(db, organizationDrafts);
     await ingestProcurements(db, procurementDrafts, organizationDrafts);
     await ingestAwards(db, procurementDrafts, organizationDrafts);

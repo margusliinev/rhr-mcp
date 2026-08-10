@@ -159,11 +159,16 @@ const parseAwards = (extension: XmlNode | null, organizations: Map<string, Parse
     return awards;
 };
 
-const applyAwardToLot = (lots: Map<string, LotDraft>, lotCode: string, award: AwardDraft | null) => {
-    const existing = lots.get(lotCode);
-    if (existing == null) {
-        if (award == null) {
-            return;
+const replaceAwards = (lots: Map<string, LotDraft>, awards: Map<string, AwardDraft>) => {
+    for (const lot of lots.values()) {
+        const award = awards.get(lot.lotCode) ?? null;
+        lot.award = award;
+        lot.status = lotStatusFromAward(award);
+    }
+
+    for (const [lotCode, award] of awards) {
+        if (lots.has(lotCode)) {
+            continue;
         }
         lots.set(lotCode, {
             lotCode,
@@ -178,20 +183,6 @@ const applyAwardToLot = (lots: Map<string, LotDraft>, lotCode: string, award: Aw
             submissionDeadline: null,
             award
         });
-        return;
-    }
-    existing.award = award;
-    existing.status = lotStatusFromAward(award);
-};
-
-const replaceAwards = (lots: Map<string, LotDraft>, awards: Map<string, AwardDraft>) => {
-    for (const lot of lots.values()) {
-        applyAwardToLot(lots, lot.lotCode, awards.get(lot.lotCode) ?? null);
-    }
-    for (const [lotCode, award] of awards) {
-        if (!lots.has(lotCode)) {
-            applyAwardToLot(lots, lotCode, award);
-        }
     }
 };
 
@@ -259,4 +250,4 @@ const ingestAwards = async (
     log(`Added ${supplierBatch.inserted} award suppliers to the database`);
 };
 
-export { lotStatusFromAward, parseAwards, applyAwardToLot, replaceAwards, ingestAwards };
+export { lotStatusFromAward, parseAwards, replaceAwards, ingestAwards };

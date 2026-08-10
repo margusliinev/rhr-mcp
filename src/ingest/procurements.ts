@@ -1,30 +1,28 @@
 import type { CreateLot, CreateProcurement, CreateProcurementBuyer, Database } from '../db/schema';
-import type { AwardDraft, BuyerDraft, LotDraft, OrganizationDraft, ProcurementDraft } from './drafts';
+import type { BuyerDraft, OrganizationDraft, ProcurementDraft } from './drafts';
 import type { ParsedOrganization } from './organizations';
 import type { XmlNode } from './util';
 import type { Kysely } from 'kysely';
-import { lotStatusFromAward } from './awards';
 import { createBatch } from './batch';
 import { log } from './log';
 import { mapBuyerActivity, mapBuyerType, mapCurrency, mapFrameworkType, mapProcedure, textOrNull } from './map';
 import { asItems, get, getAttr, getCodedText, getNode, getText, parseInstant } from './util';
 
-const deriveProcurementStatus = (lots: Iterable<LotDraft>) => {
-    const statuses = [...lots].map((lot) => lot.status);
-    if (statuses.some((status) => status === 'awarded')) {
-        return 'awarded' as const;
-    }
-    if (statuses.length > 0 && statuses.every((status) => status === 'no_winner')) {
-        return 'no_winner' as const;
-    }
-    if (statuses.some((status) => status === 'cancelled')) {
-        return 'cancelled' as const;
-    }
-    return 'published' as const;
-};
-
 const parseLotsFromProject = (notice: XmlNode) => {
-    const lots = new Map<string, Omit<LotDraft, 'status' | 'award'>>();
+    const lots = new Map<
+        string,
+        {
+            lotCode: string;
+            title: string | null;
+            description: string | null;
+            mainCpv: string | null;
+            estimatedValue: string | null;
+            currency: ReturnType<typeof mapCurrency>;
+            nutsCode: string | null;
+            locationText: string | null;
+            submissionDeadline: Date | null;
+        }
+    >();
     let frameworkType = null as ReturnType<typeof mapFrameworkType>;
     let dpsType = null as ReturnType<typeof mapFrameworkType>;
     let procedureCode = mapProcedure(getCodedText(getNode(notice, 'TenderingProcess'), 'ProcedureCode', 'procurement-procedure-type'));
@@ -109,107 +107,6 @@ const parseBuyers = (notice: XmlNode, organizations: Map<string, ParsedOrganizat
 
     return { buyers, buyerActivity };
 };
-
-const finalizeProcurementDraft = (draft: ProcurementDraft) => {
-    if (draft.estimatedValue == null) {
-        const firstLot = draft.lots.values().next().value;
-        draft.estimatedValue = firstLot?.estimatedValue ?? null;
-        draft.currency ??= firstLot?.currency ?? null;
-    }
-
-    let latestDeadline: Date | null = null;
-    for (const lot of draft.lots.values()) {
-        if (lot.submissionDeadline != null && (latestDeadline == null || lot.submissionDeadline > latestDeadline)) {
-            latestDeadline = lot.submissionDeadline;
-        }
-    }
-    draft.submissionDeadline = latestDeadline;
-    draft.status = deriveProcurementStatus(draft.lots.values());
-};
-
-const replaceLots = (
-    draft: ProcurementDraft,
-    parsedLots: Map<string, Omit<LotDraft, 'status' | 'award'>>,
-    awards: Map<string, AwardDraft>
-) => {
-    const previousAwards = new Map([...draft.lots.entries()].map(([lotCode, lot]) => [lotCode, lot.award] as const));
-    draft.lots.clear();
-
-    for (const [lotCode, lot] of parsedLots) {
-        const award = awards.get(lotCode) ?? previousAwards.get(lotCode) ?? null;
-        draft.lots.set(lotCode, {
-            ...lot,
-            award,
-            status: lotStatusFromAward(award)
-        });
-    }
-
-    for (const [lotCode, award] of awards) {
-        if (!draft.lots.has(lotCode)) {
-            draft.lots.set(lotCode, {
-                lotCode,
-                title: null,
-                description: null,
-                status: lotStatusFromAward(award),
-                mainCpv: null,
-                estimatedValue: null,
-                currency: null,
-                nutsCode: null,
-                locationText: null,
-                submissionDeadline: null,
-                award
-            });
-        }
-    }
-};
-
-const fillLotMetadata = (draft: ProcurementDraft, parsedLots: Map<string, Omit<LotDraft, 'status' | 'award'>>) => {
-    for (const [lotCode, lot] of parsedLots) {
-        const existing = draft.lots.get(lotCode);
-        if (existing == null) {
-            draft.lots.set(lotCode, {
-                ...lot,
-                award: null,
-                status: 'open'
-            });
-            continue;
-        }
-        existing.title ??= lot.title;
-        existing.description ??= lot.description;
-        existing.mainCpv ??= lot.mainCpv;
-        existing.estimatedValue ??= lot.estimatedValue;
-        existing.currency ??= lot.currency;
-        existing.nutsCode ??= lot.nutsCode;
-        existing.locationText ??= lot.locationText;
-        existing.submissionDeadline ??= lot.submissionDeadline;
-    }
-};
-
-const createEmptyProcurementDraft = (folderId: string, title: string): ProcurementDraft => ({
-    id: Bun.randomUUIDv7(),
-    folderId,
-    rhrId: null,
-    eformsId: null,
-    title,
-    description: null,
-    status: 'published',
-    type: null,
-    procedureCode: null,
-    mainCpv: null,
-    estimatedValue: null,
-    currency: null,
-    frameworkType: null,
-    buyerActivity: null,
-    periodStart: null,
-    periodEnd: null,
-    submissionDeadline: null,
-    documentsUrl: null,
-    publishedAt: null,
-    buyers: new Map(),
-    lots: new Map(),
-    htRank: null,
-    hlstRank: null
-});
 
 const dedupeRhrIds = (procurementDrafts: Map<string, ProcurementDraft>) => {
     const rhrOwners = new Map<string, ProcurementDraft>();
@@ -319,12 +216,4 @@ const ingestProcurements = async (
     log(`Added ${lotBatch.inserted} lots to the database`);
 };
 
-export {
-    parseLotsFromProject,
-    parseBuyers,
-    finalizeProcurementDraft,
-    replaceLots,
-    fillLotMetadata,
-    createEmptyProcurementDraft,
-    ingestProcurements
-};
+export { parseLotsFromProject, parseBuyers, ingestProcurements };
