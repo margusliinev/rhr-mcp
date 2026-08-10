@@ -11,7 +11,7 @@ const handler = createMcpHandler(() => {
         },
         {
             instructions:
-                'Query Public Procurement Registry data via the available tools. Prefer returned ids and registry codes for follow-ups. Use only schema enum values; never invent codes or filters.'
+                'Query Public Procurement Registry data via the available tools. Prefer returned ids, registry codes, and rhr ids for follow-ups. Use only schema enum values; never invent codes or filters.'
         }
     );
     registerTools(server);
