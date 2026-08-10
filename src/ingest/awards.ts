@@ -8,6 +8,8 @@ import { log } from './log';
 import { mapResultStatus, parseAmount, textOrNull } from './map';
 import { asItems, get, getNode, getText, hasPrivacy, parseInstant } from './util';
 
+const AMOUNT_PRIVACY_CODES = ['win-ten-val', 'not-val'] as const;
+
 const lotStatusFromAward = (award: AwardDraft | null) => {
     if (award?.resultStatus === 'Winner selected') {
         return 'awarded' as const;
@@ -16,6 +18,45 @@ const lotStatusFromAward = (award: AwardDraft | null) => {
         return 'no_winner' as const;
     }
     return 'open' as const;
+};
+
+const selectLotTender = (tenderRefs: XmlNode[], lotTenders: Map<string, XmlNode>, noticeValuePrivate: boolean) => {
+    let fallback: XmlNode | null = null;
+
+    for (const tenderRef of tenderRefs) {
+        const tenderId = getText(tenderRef, 'ID');
+        const tender = tenderId == null ? null : (lotTenders.get(tenderId) ?? null);
+        if (tender == null) {
+            continue;
+        }
+        fallback ??= tender;
+        if (noticeValuePrivate || hasPrivacy(tender, AMOUNT_PRIVACY_CODES)) {
+            continue;
+        }
+        const { amount } = parseAmount(getNode(tender, 'LegalMonetaryTotal'));
+        if (amount != null) {
+            return { tender, amountPrivate: false as const };
+        }
+    }
+
+    return {
+        tender: fallback,
+        amountPrivate: noticeValuePrivate || (fallback != null && hasPrivacy(fallback, AMOUNT_PRIVACY_CODES))
+    };
+};
+
+const selectSettledContract = (contractRefs: XmlNode[], settledContracts: Map<string, XmlNode>, tenderId: string | null) => {
+    if (tenderId != null) {
+        for (const contract of settledContracts.values()) {
+            const linkedTenderIds = asItems(get(contract, 'LotTender')).map((item) => getText(item, 'ID'));
+            if (linkedTenderIds.includes(tenderId)) {
+                return contract;
+            }
+        }
+    }
+
+    const firstContractId = getText(contractRefs[0] ?? null, 'ID');
+    return firstContractId == null ? null : (settledContracts.get(firstContractId) ?? null);
 };
 
 const parseAwards = (extension: XmlNode | null, organizations: Map<string, ParsedOrganization>, usedRegistryCodes: Set<string>) => {
@@ -74,16 +115,12 @@ const parseAwards = (extension: XmlNode | null, organizations: Map<string, Parse
         }
 
         const tenderRefs = asItems(get(lotResult, 'LotTender'));
-        const firstTenderId = getText(tenderRefs[0] ?? null, 'ID');
-        const lotTender = firstTenderId == null ? null : (lotTenders.get(firstTenderId) ?? null);
-        const amountPrivate = noticeValuePrivate || hasPrivacy(lotTender, ['win-ten-val', 'not-val']) || hasPrivacy(lotTender);
+        const { tender: lotTender, amountPrivate } = selectLotTender(tenderRefs, lotTenders, noticeValuePrivate);
         const payable = amountPrivate ? null : getNode(lotTender, 'LegalMonetaryTotal');
         const { amount, currency } = parseAmount(payable);
 
         const contractRefs = asItems(get(lotResult, 'SettledContract'));
-        const firstContractId = getText(contractRefs[0] ?? null, 'ID');
-        const contract = firstContractId == null ? null : (settledContracts.get(firstContractId) ?? null);
-
+        const contract = selectSettledContract(contractRefs, settledContracts, getText(lotTender, 'ID'));
         const frameworkMax = getNode(getNode(lotResult, 'FrameworkAgreementValues'), 'MaximumValueAmount');
 
         const suppliers: SupplierDraft[] = [];
@@ -122,9 +159,12 @@ const parseAwards = (extension: XmlNode | null, organizations: Map<string, Parse
     return awards;
 };
 
-const applyAwardToLot = (lots: Map<string, LotDraft>, lotCode: string, award: AwardDraft) => {
+const applyAwardToLot = (lots: Map<string, LotDraft>, lotCode: string, award: AwardDraft | null) => {
     const existing = lots.get(lotCode);
     if (existing == null) {
+        if (award == null) {
+            return;
+        }
         lots.set(lotCode, {
             lotCode,
             title: null,
@@ -142,6 +182,17 @@ const applyAwardToLot = (lots: Map<string, LotDraft>, lotCode: string, award: Aw
     }
     existing.award = award;
     existing.status = lotStatusFromAward(award);
+};
+
+const replaceAwards = (lots: Map<string, LotDraft>, awards: Map<string, AwardDraft>) => {
+    for (const lot of lots.values()) {
+        applyAwardToLot(lots, lot.lotCode, awards.get(lot.lotCode) ?? null);
+    }
+    for (const [lotCode, award] of awards) {
+        if (!lots.has(lotCode)) {
+            applyAwardToLot(lots, lotCode, award);
+        }
+    }
 };
 
 const ingestAwards = async (
@@ -208,4 +259,4 @@ const ingestAwards = async (
     log(`Added ${supplierBatch.inserted} award suppliers to the database`);
 };
 
-export { lotStatusFromAward, parseAwards, applyAwardToLot, ingestAwards };
+export { lotStatusFromAward, parseAwards, applyAwardToLot, replaceAwards, ingestAwards };

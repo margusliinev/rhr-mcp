@@ -10,7 +10,7 @@ import type {
     ProcurementStatus,
     ProcurementType
 } from '../mappings';
-import type { Generated, Insertable, Selectable, Updateable } from 'kysely';
+import type { Generated, Insertable, Selectable } from 'kysely';
 
 type Timestamps = {
     createdAt: Generated<Date>;
@@ -110,11 +110,6 @@ type CreateLot = Insertable<LotTable>;
 type CreateAward = Insertable<AwardTable>;
 type CreateAwardSupplier = Insertable<AwardSupplierTable>;
 
-type UpdateOrganization = Updateable<OrganizationTable>;
-type UpdateProcurement = Updateable<ProcurementTable>;
-type UpdateLot = Updateable<LotTable>;
-type UpdateAward = Updateable<AwardTable>;
-
 export type {
     Database,
     Organization,
@@ -128,9 +123,5 @@ export type {
     CreateProcurementBuyer,
     CreateLot,
     CreateAward,
-    CreateAwardSupplier,
-    UpdateOrganization,
-    UpdateProcurement,
-    UpdateLot,
-    UpdateAward
+    CreateAwardSupplier
 };

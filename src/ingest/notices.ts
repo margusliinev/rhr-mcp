@@ -1,12 +1,20 @@
 import type { AwardDraft, NoticeDrafts, OrganizationDraft, ProcurementDraft } from './drafts';
 import type { XmlNode } from './util';
-import { applyAwardToLot, parseAwards } from './awards';
+import { parseAwards, replaceAwards } from './awards';
 import { log } from './log';
 import { mapCurrency, mapProcedure, mapType, textOrNull } from './map';
 import { collectOrganizations, ensureOrganizationDrafts } from './organizations';
-import { createEmptyProcurementDraft, finalizeProcurementDraft, mergeLots, parseBuyers, parseLotsFromProject } from './procurements';
+import {
+    createEmptyProcurementDraft,
+    fillLotMetadata,
+    finalizeProcurementDraft,
+    parseBuyers,
+    parseLotsFromProject,
+    replaceLots
+} from './procurements';
 import {
     getAttr,
+    getCodedText,
     getExtension,
     getNode,
     getNoticeRoot,
@@ -18,6 +26,53 @@ import {
     parseRhrId
 } from './util';
 import { iterateXmlRecords } from './xml';
+
+const applyCoreFields = (
+    draft: ProcurementDraft,
+    input: {
+        title: string;
+        description: string | null;
+        type: ReturnType<typeof mapType>;
+        procedureCode: ReturnType<typeof mapProcedure>;
+        mainCpv: string | null;
+        estimatedValue: string | null;
+        currency: ReturnType<typeof mapCurrency>;
+        frameworkType: ProcurementDraft['frameworkType'];
+        buyerActivity: ProcurementDraft['buyerActivity'];
+        periodStart: Date | null;
+        periodEnd: Date | null;
+        eformsId: string | null;
+    },
+    mode: 'replace' | 'fill'
+) => {
+    if (mode === 'replace') {
+        draft.title = input.title;
+        draft.description = input.description;
+        draft.type = input.type;
+        draft.procedureCode = input.procedureCode;
+        draft.mainCpv = input.mainCpv;
+        draft.estimatedValue = input.estimatedValue;
+        draft.currency = input.currency;
+        draft.frameworkType = input.frameworkType;
+        draft.buyerActivity = input.buyerActivity;
+        draft.periodStart = input.periodStart;
+        draft.periodEnd = input.periodEnd;
+        draft.eformsId = input.eformsId;
+        return;
+    }
+
+    draft.description ??= input.description;
+    draft.type ??= input.type;
+    draft.procedureCode ??= input.procedureCode;
+    draft.mainCpv ??= input.mainCpv;
+    draft.estimatedValue ??= input.estimatedValue;
+    draft.currency ??= input.currency;
+    draft.frameworkType ??= input.frameworkType;
+    draft.buyerActivity ??= input.buyerActivity;
+    draft.periodStart ??= input.periodStart;
+    draft.periodEnd ??= input.periodEnd;
+    draft.eformsId ??= input.eformsId;
+};
 
 const applyNotice = (
     draft: ProcurementDraft | null,
@@ -45,53 +100,64 @@ const applyNotice = (
 
     const estimated = getNode(getNode(project, 'RequestedTenderTotal'), 'EstimatedOverallContractAmount');
     const plannedPeriod = getNode(project, 'PlannedPeriod');
-    const rootProcedure = mapProcedure(getText(getNode(notice, 'TenderingProcess'), 'ProcedureCode'));
+    const rootProcedure = mapProcedure(getCodedText(getNode(notice, 'TenderingProcess'), 'ProcedureCode', 'procurement-procedure-type'));
 
     let next = draft;
     next ??= createEmptyProcurementDraft(folderId, title);
 
-    const shouldReplaceCore = kind === 'ht' ? next.htRank == null || rank >= next.htRank : next.hlstRank == null || rank >= next.hlstRank;
+    const core = {
+        title,
+        description: getText(project, 'Description'),
+        type: mapType(getCodedText(project, 'ProcurementTypeCode', 'contract-nature')),
+        procedureCode: rootProcedure ?? procedureCode,
+        mainCpv: getText(getNode(project, 'MainCommodityClassification'), 'ItemClassificationCode'),
+        estimatedValue: textOrNull(estimated),
+        currency: mapCurrency(getAttr(estimated, 'currencyID')),
+        frameworkType,
+        buyerActivity,
+        periodStart: parseInstant(getText(plannedPeriod, 'StartDate')),
+        periodEnd: parseInstant(getText(plannedPeriod, 'EndDate')),
+        eformsId: parseEformsId(getText(project, 'ID'))
+    };
 
     if (kind === 'ht') {
-        if (next.htRank == null || rank >= next.htRank) {
-            next.htRank = rank;
+        if (next.htRank != null && rank < next.htRank) {
+            finalizeProcurementDraft(next);
+            return next;
         }
-    } else if (next.hlstRank == null || rank >= next.hlstRank) {
+        next.htRank = rank;
+        applyCoreFields(next, core, 'replace');
+        next.documentsUrl = documentsUrl;
+        next.rhrId = parseRhrId(documentsUrl);
+        next.publishedAt = issuedAt;
+        next.buyers = new Map(buyers);
+        replaceLots(next, parsedLots, new Map());
+    } else {
+        if (next.hlstRank != null && rank < next.hlstRank) {
+            finalizeProcurementDraft(next);
+            return next;
+        }
         next.hlstRank = rank;
-    }
 
-    if (shouldReplaceCore) {
-        next.title = title;
-        next.description = getText(project, 'Description');
-        next.type = mapType(getText(project, 'ProcurementTypeCode'));
-        next.procedureCode = rootProcedure ?? procedureCode;
-        next.mainCpv = getText(getNode(project, 'MainCommodityClassification'), 'ItemClassificationCode');
-        next.estimatedValue = textOrNull(estimated);
-        next.currency = mapCurrency(getAttr(estimated, 'currencyID'));
-        next.frameworkType = frameworkType;
-        next.buyerActivity = buyerActivity;
-        next.periodStart = parseInstant(getText(plannedPeriod, 'StartDate'));
-        next.periodEnd = parseInstant(getText(plannedPeriod, 'EndDate'));
-        next.eformsId = parseEformsId(getText(project, 'ID'));
-
-        if (kind === 'ht') {
+        if (next.htRank == null) {
+            applyCoreFields(next, core, 'replace');
             next.documentsUrl = documentsUrl;
             next.rhrId = parseRhrId(documentsUrl);
             next.publishedAt = issuedAt;
+            next.buyers = new Map(buyers);
+            replaceLots(next, parsedLots, awards);
         } else {
+            applyCoreFields(next, core, 'fill');
             next.publishedAt ??= issuedAt;
             next.documentsUrl ??= documentsUrl;
             next.rhrId ??= parseRhrId(documentsUrl);
-        }
-
-        for (const [registryCode, buyer] of buyers) {
-            next.buyers.set(registryCode, buyer);
-        }
-
-        mergeLots(next, parsedLots, awards, kind);
-    } else if (kind === 'hlst' && (next.hlstRank == null || rank >= next.hlstRank)) {
-        for (const [lotCode, award] of awards) {
-            applyAwardToLot(next.lots, lotCode, award);
+            for (const [registryCode, buyer] of buyers) {
+                if (!next.buyers.has(registryCode)) {
+                    next.buyers.set(registryCode, buyer);
+                }
+            }
+            fillLotMetadata(next, parsedLots);
+            replaceAwards(next.lots, awards);
         }
     }
 

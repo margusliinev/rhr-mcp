@@ -17,11 +17,11 @@ organization ──< procurementBuyer >── procurement ──< lot ──o aw
 | `HT_{year}_{month}.xml`   | `ContractNotice`      | `organization`, `procurement`, `procurementBuyer`, `lot`                           |
 | `HLST_{year}_{month}.xml` | `ContractAwardNotice` | `organization`, `procurement`, `procurementBuyer`, `lot`, `award`, `awardSupplier` |
 
-Upsert from `HT_*`, enrich awards from `HLST_*` (match on `folderId`). Prefer the latest notice version on republication.
+Upsert from `HT_*`, enrich awards from `HLST_*` (match on `folderId`). Prefer the latest notice version on republication. HT owns core procurement fields when present; HLST fills gaps and supplies awards.
 
-Skip noise orgs unless they are a real buyer or winner: `TED64` (Riigihangete register), `1000123` (Riigihangete vaidlustuskomisjon).
+Always skip noise orgs: `TED64` (Riigihangete register), `1000123` (Riigihangete vaidlustuskomisjon).
 
-Mapped code fields store the English label from `src/mappings` (not the raw eForms code). `frameworkType` source `none` → `null`.
+Mapped code fields store the English label from `src/mappings` (not the raw eForms code). `frameworkType` source `none` → `null`. Multilingual text fields prefer Estonian (`languageID=EST`), otherwise the first value.
 
 ## `organization`
 
@@ -61,12 +61,12 @@ Mappings: `src/mappings/procurement/type.ts`, `procedure.ts`, `framework-type.ts
 | `ProcurementProject/Name`                                                | `title`              |
 | `ProcurementProject/Description`                                         | `description`        |
 | derived (`published` / `awarded` / `cancelled` / `no_winner`)            | `status`             |
-| `ProcurementProject/ProcurementTypeCode`                                 | `type`               |
+| `ProcurementProject/ProcurementTypeCode` (`listName=contract-nature`)    | `type`               |
 | `TenderingProcess/ProcedureCode`                                         | `procedureCode`      |
 | `ProcurementProject/MainCommodityClassification/ItemClassificationCode`  | `mainCpv`            |
 | `ProcurementProject/RequestedTenderTotal/EstimatedOverallContractAmount` | `estimatedValue`     |
 | same `@currencyID`                                                       | `currency`           |
-| lot `ContractingSystemTypeCode` (`listName=framework-agreement`)         | `frameworkType`      |
+| lot `ContractingSystemTypeCode` (`framework-agreement` or `dps-usage`)   | `frameworkType`      |
 | `ContractingParty/ContractingActivity/ActivityTypeCode`                  | `buyerActivity`      |
 | `ProcurementProject/PlannedPeriod/StartDate`                             | `periodStart`        |
 | `ProcurementProject/PlannedPeriod/EndDate`                               | `periodEnd`          |
@@ -114,19 +114,19 @@ One award per lot (`lotId` unique). From HLST `EformsExtension/NoticeResult`. Ma
 
 Mappings: `src/mappings/award/result-status.ts`.
 
-| Source                                                         | Database             |
-| -------------------------------------------------------------- | -------------------- |
-| matched `lot`                                                  | `lotId`              |
-| `LotResult/TenderResultCode`                                   | `resultStatus`       |
-| linked `LotTender/LegalMonetaryTotal/PayableAmount`            | `amount`             |
-| same `@currencyID`                                             | `currency`           |
-| linked `SettledContract/Title`                                 | `contractTitle`      |
-| linked `SettledContract/IssueDate`                             | `contractDate`       |
-| `ReceivedSubmissionsStatistics` where `StatisticsCode=tenders` | `tendersCount`       |
-| `ReceivedSubmissionsStatistics` where `StatisticsCode=t-sme`   | `smeTendersCount`    |
-| `LotResult/FrameworkAgreementValues/MaximumValueAmount`        | `frameworkMaxAmount` |
+| Source                                                                    | Database             |
+| ------------------------------------------------------------------------- | -------------------- |
+| matched `lot`                                                             | `lotId`              |
+| `LotResult/TenderResultCode`                                              | `resultStatus`       |
+| linked `LotTender/LegalMonetaryTotal/PayableAmount` (first usable)        | `amount`             |
+| same `@currencyID`                                                        | `currency`           |
+| linked `SettledContract/Title` (matched to selected tender when possible) | `contractTitle`      |
+| linked `SettledContract/IssueDate`                                        | `contractDate`       |
+| `ReceivedSubmissionsStatistics` where `StatisticsCode=tenders`            | `tendersCount`       |
+| `ReceivedSubmissionsStatistics` where `StatisticsCode=t-sme`              | `smeTendersCount`    |
+| `LotResult/FrameworkAgreementValues/MaximumValueAmount`                   | `frameworkMaxAmount` |
 
-Privacy-withheld amount/statistics (`FieldsPrivacy`) → store `null`.
+Privacy-withheld amount/statistics (`FieldsPrivacy` with `win-ten-val` / `not-val`, or stats privacy) → store `null`.
 
 ## `awardSupplier`
 

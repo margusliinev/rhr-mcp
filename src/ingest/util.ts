@@ -12,7 +12,9 @@ type NoticeFileNameParts = {
     month: number;
 };
 
-const text = (value: unknown) => {
+const isXmlNode = (value: unknown): value is XmlNode => value != null && typeof value === 'object' && !Array.isArray(value);
+
+const text = (value: unknown): string | null => {
     if (value == null) {
         return null;
     }
@@ -20,13 +22,26 @@ const text = (value: unknown) => {
         const trimmed = value.trim();
         return trimmed === '' ? null : trimmed;
     }
-    if (typeof value === 'object' && value !== null && '#text' in value) {
+    if (Array.isArray(value)) {
+        let fallback: string | null = null;
+        for (const item of value) {
+            const language = isXmlNode(item) ? text(item['@languageID']) : null;
+            const itemText = text(item);
+            if (itemText == null) {
+                continue;
+            }
+            if (language === 'EST') {
+                return itemText;
+            }
+            fallback ??= itemText;
+        }
+        return fallback;
+    }
+    if (typeof value === 'object' && '#text' in value) {
         return text(value['#text']);
     }
     return null;
 };
-
-const isXmlNode = (value: unknown): value is XmlNode => value != null && typeof value === 'object' && !Array.isArray(value);
 
 const asItems = (value: unknown): XmlNode[] => {
     if (value == null || value === '') {
@@ -78,6 +93,25 @@ const getAttr = (value: unknown, name: string) => {
     const key = name.startsWith('@') ? name : `@${name}`;
     if (key in value) {
         return text(value[key]);
+    }
+    return null;
+};
+
+const getCodedText = (node: XmlNode | null | undefined, name: string, listName: string) => {
+    for (const item of asItems(get(node, name))) {
+        if (getAttr(item, 'listName') === listName) {
+            return text(item);
+        }
+    }
+    const value = get(node, name);
+    if (!Array.isArray(value) && getAttr(value, 'listName') === listName) {
+        return text(value);
+    }
+    if (!Array.isArray(value) && isXmlNode(value) && getAttr(value, 'listName') == null) {
+        return text(value);
+    }
+    if (typeof value === 'string') {
+        return text(value);
     }
     return null;
 };
@@ -210,7 +244,7 @@ const hasPrivacy = (node: XmlNode | null | undefined, codes?: readonly string[])
     });
 };
 
-export type { XmlNode, NoticeFile };
+export type { XmlNode };
 export {
     text,
     asItems,
@@ -218,14 +252,13 @@ export {
     getNode,
     getText,
     getAttr,
+    getCodedText,
     parseInstant,
     parseRhrId,
     parseEformsId,
     noticeRank,
-    dataPath,
     listNoticeFiles,
     getNoticeRoot,
     getExtension,
-    hasPrivacy,
-    isXmlNode
+    hasPrivacy
 };

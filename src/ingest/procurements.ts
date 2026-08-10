@@ -3,11 +3,11 @@ import type { AwardDraft, BuyerDraft, LotDraft, OrganizationDraft, ProcurementDr
 import type { ParsedOrganization } from './organizations';
 import type { XmlNode } from './util';
 import type { Kysely } from 'kysely';
-import { applyAwardToLot, lotStatusFromAward } from './awards';
+import { lotStatusFromAward } from './awards';
 import { createBatch } from './batch';
 import { log } from './log';
 import { mapBuyerActivity, mapBuyerType, mapCurrency, mapFrameworkType, mapProcedure, textOrNull } from './map';
-import { asItems, get, getAttr, getNode, getText, parseInstant } from './util';
+import { asItems, get, getAttr, getCodedText, getNode, getText, parseInstant } from './util';
 
 const deriveProcurementStatus = (lots: Iterable<LotDraft>) => {
     const statuses = [...lots].map((lot) => lot.status);
@@ -26,7 +26,8 @@ const deriveProcurementStatus = (lots: Iterable<LotDraft>) => {
 const parseLotsFromProject = (notice: XmlNode) => {
     const lots = new Map<string, Omit<LotDraft, 'status' | 'award'>>();
     let frameworkType = null as ReturnType<typeof mapFrameworkType>;
-    let procedureCode = mapProcedure(getText(getNode(notice, 'TenderingProcess'), 'ProcedureCode'));
+    let dpsType = null as ReturnType<typeof mapFrameworkType>;
+    let procedureCode = mapProcedure(getCodedText(getNode(notice, 'TenderingProcess'), 'ProcedureCode', 'procurement-procedure-type'));
     let documentsUrl: string | null = null;
 
     for (const lotNode of asItems(get(notice, 'ProcurementProjectLot'))) {
@@ -44,8 +45,12 @@ const parseLotsFromProject = (notice: XmlNode) => {
 
         for (const system of asItems(get(tenderingProcess, 'ContractingSystem'))) {
             const codeNode = get(system, 'ContractingSystemTypeCode');
-            if (getAttr(codeNode, 'listName') === 'framework-agreement') {
+            const listName = getAttr(codeNode, 'listName');
+            if (listName === 'framework-agreement') {
                 frameworkType ??= mapFrameworkType(textOrNull(codeNode));
+            }
+            if (listName === 'dps-usage') {
+                dpsType ??= mapFrameworkType(textOrNull(codeNode));
             }
         }
 
@@ -54,7 +59,7 @@ const parseLotsFromProject = (notice: XmlNode) => {
             'URI'
         );
 
-        const lotProcedure = mapProcedure(getText(tenderingProcess, 'ProcedureCode'));
+        const lotProcedure = mapProcedure(getCodedText(tenderingProcess, 'ProcedureCode', 'procurement-procedure-type'));
         procedureCode ??= lotProcedure;
 
         lots.set(lotCode, {
@@ -70,7 +75,7 @@ const parseLotsFromProject = (notice: XmlNode) => {
         });
     }
 
-    return { lots, frameworkType, procedureCode, documentsUrl };
+    return { lots, frameworkType: frameworkType ?? dpsType, procedureCode, documentsUrl };
 };
 
 const parseBuyers = (notice: XmlNode, organizations: Map<string, ParsedOrganization>) => {
@@ -78,15 +83,27 @@ const parseBuyers = (notice: XmlNode, organizations: Map<string, ParsedOrganizat
     let buyerActivity = null as ReturnType<typeof mapBuyerActivity>;
 
     for (const party of asItems(get(notice, 'ContractingParty'))) {
-        buyerActivity ??= mapBuyerActivity(getText(getNode(party, 'ContractingActivity'), 'ActivityTypeCode'));
+        buyerActivity ??= mapBuyerActivity(
+            getCodedText(getNode(party, 'ContractingActivity'), 'ActivityTypeCode', 'authority-activity') ??
+                getCodedText(getNode(party, 'ContractingActivity'), 'ActivityTypeCode', 'entity-activity') ??
+                getText(getNode(party, 'ContractingActivity'), 'ActivityTypeCode')
+        );
         const orgId = getText(getNode(getNode(party, 'Party'), 'PartyIdentification'), 'ID');
         const organization = orgId == null ? undefined : organizations.get(orgId);
         if (organization == null) {
             continue;
         }
+
+        let legalType: string | null = null;
+        let contractingType: string | null = null;
+        for (const partyType of asItems(get(party, 'ContractingPartyType'))) {
+            legalType ??= getCodedText(partyType, 'PartyTypeCode', 'buyer-legal-type');
+            contractingType ??= getCodedText(partyType, 'PartyTypeCode', 'buyer-contracting-type');
+        }
+
         buyers.set(organization.registryCode, {
             registryCode: organization.registryCode,
-            buyerType: mapBuyerType(getText(getNode(party, 'ContractingPartyType'), 'PartyTypeCode'))
+            buyerType: mapBuyerType(legalType ?? contractingType)
         });
     }
 
@@ -110,15 +127,16 @@ const finalizeProcurementDraft = (draft: ProcurementDraft) => {
     draft.status = deriveProcurementStatus(draft.lots.values());
 };
 
-const mergeLots = (
+const replaceLots = (
     draft: ProcurementDraft,
     parsedLots: Map<string, Omit<LotDraft, 'status' | 'award'>>,
-    awards: Map<string, AwardDraft>,
-    kind: 'ht' | 'hlst'
+    awards: Map<string, AwardDraft>
 ) => {
+    const previousAwards = new Map([...draft.lots.entries()].map(([lotCode, lot]) => [lotCode, lot.award] as const));
+    draft.lots.clear();
+
     for (const [lotCode, lot] of parsedLots) {
-        const existing = draft.lots.get(lotCode);
-        const award = kind === 'hlst' ? (awards.get(lotCode) ?? existing?.award ?? null) : (existing?.award ?? null);
+        const award = awards.get(lotCode) ?? previousAwards.get(lotCode) ?? null;
         draft.lots.set(lotCode, {
             ...lot,
             award,
@@ -126,10 +144,44 @@ const mergeLots = (
         });
     }
 
-    if (kind === 'hlst') {
-        for (const [lotCode, award] of awards) {
-            applyAwardToLot(draft.lots, lotCode, award);
+    for (const [lotCode, award] of awards) {
+        if (!draft.lots.has(lotCode)) {
+            draft.lots.set(lotCode, {
+                lotCode,
+                title: null,
+                description: null,
+                status: lotStatusFromAward(award),
+                mainCpv: null,
+                estimatedValue: null,
+                currency: null,
+                nutsCode: null,
+                locationText: null,
+                submissionDeadline: null,
+                award
+            });
         }
+    }
+};
+
+const fillLotMetadata = (draft: ProcurementDraft, parsedLots: Map<string, Omit<LotDraft, 'status' | 'award'>>) => {
+    for (const [lotCode, lot] of parsedLots) {
+        const existing = draft.lots.get(lotCode);
+        if (existing == null) {
+            draft.lots.set(lotCode, {
+                ...lot,
+                award: null,
+                status: 'open'
+            });
+            continue;
+        }
+        existing.title ??= lot.title;
+        existing.description ??= lot.description;
+        existing.mainCpv ??= lot.mainCpv;
+        existing.estimatedValue ??= lot.estimatedValue;
+        existing.currency ??= lot.currency;
+        existing.nutsCode ??= lot.nutsCode;
+        existing.locationText ??= lot.locationText;
+        existing.submissionDeadline ??= lot.submissionDeadline;
     }
 };
 
@@ -267,4 +319,12 @@ const ingestProcurements = async (
     log(`Added ${lotBatch.inserted} lots to the database`);
 };
 
-export { parseLotsFromProject, parseBuyers, finalizeProcurementDraft, mergeLots, createEmptyProcurementDraft, ingestProcurements };
+export {
+    parseLotsFromProject,
+    parseBuyers,
+    finalizeProcurementDraft,
+    replaceLots,
+    fillLotMetadata,
+    createEmptyProcurementDraft,
+    ingestProcurements
+};

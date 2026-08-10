@@ -33,6 +33,7 @@ const organizationCountryValues = [
     'LVA',
     'MDA',
     'MKD',
+    'MNE',
     'NLD',
     'NOR',
     'POL',

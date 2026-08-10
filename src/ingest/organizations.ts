@@ -48,20 +48,31 @@ const ensureOrganizationDrafts = (
 ) => {
     const byRegistry = new Map([...organizations.values()].map((organization) => [organization.registryCode, organization]));
     for (const registryCode of registryCodes) {
-        if (NOISE_REGISTRY_CODES.has(registryCode) || drafts.has(registryCode)) {
+        if (NOISE_REGISTRY_CODES.has(registryCode)) {
             continue;
         }
         const organization = byRegistry.get(registryCode);
         if (organization == null) {
             continue;
         }
-        drafts.set(registryCode, {
-            id: Bun.randomUUIDv7(),
-            registryCode: organization.registryCode,
-            name: organization.name,
-            city: organization.city,
-            country: organization.country
-        });
+        const existing = drafts.get(registryCode);
+        if (existing == null) {
+            drafts.set(registryCode, {
+                id: Bun.randomUUIDv7(),
+                registryCode: organization.registryCode,
+                name: organization.name,
+                city: organization.city,
+                country: organization.country
+            });
+            continue;
+        }
+        existing.name = organization.name;
+        if (organization.city != null) {
+            existing.city = organization.city;
+        }
+        if (organization.country != null) {
+            existing.country = organization.country;
+        }
     }
 };
 
