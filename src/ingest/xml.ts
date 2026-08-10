@@ -10,8 +10,11 @@ const parseXml = (xml: string): unknown => {
     return parse.call(xmlApi, xml);
 };
 
+const isTagOpenBoundary = (char: string | undefined) =>
+    char === '>' || char === ' ' || char === '\n' || char === '\r' || char === '\t' || char === '/';
+
 async function* iterateXmlRecords(filePath: string, tag: string) {
-    const open = `<${tag}>`;
+    const openPrefix = `<${tag}`;
     const close = `</${tag}>`;
     const stream = Bun.file(filePath).stream();
     const reader = stream.getReader();
@@ -26,13 +29,17 @@ async function* iterateXmlRecords(filePath: string, tag: string) {
         buffer += decoder.decode(value, { stream: true });
 
         while (true) {
-            const start = buffer.indexOf(open);
+            const start = buffer.indexOf(openPrefix);
             if (start === -1) {
-                buffer = buffer.length > open.length ? buffer.slice(-(open.length - 1)) : buffer;
+                buffer = buffer.length > openPrefix.length ? buffer.slice(-(openPrefix.length - 1)) : buffer;
                 break;
             }
             if (start > 0) {
                 buffer = buffer.slice(start);
+            }
+            if (!isTagOpenBoundary(buffer[openPrefix.length])) {
+                buffer = buffer.slice(openPrefix.length);
+                continue;
             }
             const end = buffer.indexOf(close);
             if (end === -1) {

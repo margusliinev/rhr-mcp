@@ -90,6 +90,10 @@ export default defineConfig({
                 'eslint/max-depth': 'off',
                 'eslint/eqeqeq': 'off',
                 'eslint/no-eq-null': 'off',
+                'eslint/max-lines': 'off',
+                'eslint/max-params': 'off',
+                'eslint/no-use-before-define': 'off',
+                'unicorn/max-nested-calls': 'off',
                 'node/no-top-level-await': 'off'
             }
         },
