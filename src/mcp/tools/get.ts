@@ -9,7 +9,8 @@ import {
     lotSummary,
     notFound,
     organizationSummary,
-    procurementSummary
+    procurementSummary,
+    loggedTool
 } from '../util';
 
 const registerGetTools = (server: McpServer) => {
@@ -20,10 +21,10 @@ const registerGetTools = (server: McpServer) => {
             inputSchema: getOrganizationInputSchema,
             annotations: { readOnlyHint: true }
         },
-        async (args) => {
+        loggedTool('get-organization', async (args) => {
             const organization = await findOrganization(args);
             return organization == null ? notFound('Organization') : json(organization);
-        }
+        })
     );
 
     server.registerTool(
@@ -33,7 +34,7 @@ const registerGetTools = (server: McpServer) => {
             inputSchema: getProcurementInputSchema,
             annotations: { readOnlyHint: true }
         },
-        async (args) => {
+        loggedTool('get-procurement', async (args) => {
             const procurement = await findProcurement(args);
             if (procurement == null) {
                 return notFound('Procurement');
@@ -80,7 +81,7 @@ const registerGetTools = (server: McpServer) => {
                 lots,
                 awards: awardRows.map((row) => awardSummary(row))
             });
-        }
+        })
     );
 
     server.registerTool(
@@ -90,7 +91,7 @@ const registerGetTools = (server: McpServer) => {
             inputSchema: getAwardInputSchema,
             annotations: { readOnlyHint: true }
         },
-        async ({ id }) => {
+        loggedTool('get-award', async ({ id }) => {
             const award = await db.selectFrom('award').selectAll().where('id', '=', id).executeTakeFirst();
             if (award == null) {
                 return notFound('Award');
@@ -137,7 +138,7 @@ const registerGetTools = (server: McpServer) => {
                     })
                 }))
             });
-        }
+        })
     );
 };
 

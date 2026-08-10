@@ -13,7 +13,8 @@ import {
     lotSummary,
     notFound,
     organizationSummary,
-    procurementSummary
+    procurementSummary,
+    loggedTool
 } from '../util';
 
 const registerListTools = (server: McpServer) => {
@@ -24,7 +25,7 @@ const registerListTools = (server: McpServer) => {
             inputSchema: listOrganizationProcurementsInputSchema,
             annotations: { readOnlyHint: true }
         },
-        async ({ id, registryCode, status, type, limit }) => {
+        loggedTool('list-organization-procurements', async ({ id, registryCode, status, type, limit }) => {
             const organization = await findOrganization({ id, registryCode });
             if (organization == null) {
                 return notFound('Organization');
@@ -89,7 +90,7 @@ const registerListTools = (server: McpServer) => {
                     }
                 }))
             });
-        }
+        })
     );
 
     server.registerTool(
@@ -99,99 +100,102 @@ const registerListTools = (server: McpServer) => {
             inputSchema: listOrganizationAwardsInputSchema,
             annotations: { readOnlyHint: true }
         },
-        async ({ id, registryCode, resultStatus, minAmount, maxAmount, contractDateFrom, contractDateTo, limit }) => {
-            const organization = await findOrganization({ id, registryCode });
-            if (organization == null) {
-                return notFound('Organization');
-            }
+        loggedTool(
+            'list-organization-awards',
+            async ({ id, registryCode, resultStatus, minAmount, maxAmount, contractDateFrom, contractDateTo, limit }) => {
+                const organization = await findOrganization({ id, registryCode });
+                if (organization == null) {
+                    return notFound('Organization');
+                }
 
-            let awardsQuery = db
-                .selectFrom('awardSupplier')
-                .innerJoin('award', 'award.id', 'awardSupplier.awardId')
-                .innerJoin('lot', 'lot.id', 'award.lotId')
-                .innerJoin('procurement', 'procurement.id', 'lot.procurementId')
-                .select([
-                    'awardSupplier.isGroupLead',
-                    'award.id',
-                    'award.lotId',
-                    'award.resultStatus',
-                    'award.amount',
-                    'award.currency',
-                    'award.contractTitle',
-                    'award.contractDate',
-                    'award.tendersCount',
-                    'award.smeTendersCount',
-                    'award.frameworkMaxAmount',
-                    'lot.id as lotRowId',
-                    'lot.procurementId',
-                    'lot.lotCode',
-                    'lot.title as lotTitle',
-                    'lot.status as lotStatus',
-                    'lot.mainCpv as lotMainCpv',
-                    'procurement.id as procurementRowId',
-                    'procurement.rhrId',
-                    'procurement.folderId',
-                    'procurement.title as procurementTitle',
-                    'procurement.status as procurementStatus',
-                    'procurement.type as procurementType',
-                    'procurement.mainCpv as procurementMainCpv'
-                ])
-                .where('awardSupplier.organizationId', '=', organization.id);
+                let awardsQuery = db
+                    .selectFrom('awardSupplier')
+                    .innerJoin('award', 'award.id', 'awardSupplier.awardId')
+                    .innerJoin('lot', 'lot.id', 'award.lotId')
+                    .innerJoin('procurement', 'procurement.id', 'lot.procurementId')
+                    .select([
+                        'awardSupplier.isGroupLead',
+                        'award.id',
+                        'award.lotId',
+                        'award.resultStatus',
+                        'award.amount',
+                        'award.currency',
+                        'award.contractTitle',
+                        'award.contractDate',
+                        'award.tendersCount',
+                        'award.smeTendersCount',
+                        'award.frameworkMaxAmount',
+                        'lot.id as lotRowId',
+                        'lot.procurementId',
+                        'lot.lotCode',
+                        'lot.title as lotTitle',
+                        'lot.status as lotStatus',
+                        'lot.mainCpv as lotMainCpv',
+                        'procurement.id as procurementRowId',
+                        'procurement.rhrId',
+                        'procurement.folderId',
+                        'procurement.title as procurementTitle',
+                        'procurement.status as procurementStatus',
+                        'procurement.type as procurementType',
+                        'procurement.mainCpv as procurementMainCpv'
+                    ])
+                    .where('awardSupplier.organizationId', '=', organization.id);
 
-            if (resultStatus != null) {
-                awardsQuery = awardsQuery.where('award.resultStatus', '=', resultStatus);
-            }
-            if (minAmount != null) {
-                awardsQuery = awardsQuery.where('award.amount', '>=', String(minAmount));
-            }
-            if (maxAmount != null) {
-                awardsQuery = awardsQuery.where('award.amount', '<=', String(maxAmount));
-            }
-            if (contractDateFrom != null) {
-                awardsQuery = awardsQuery.where('award.contractDate', '>=', new Date(contractDateFrom));
-            }
-            if (contractDateTo != null) {
-                awardsQuery = awardsQuery.where('award.contractDate', '<=', new Date(contractDateTo));
-            }
+                if (resultStatus != null) {
+                    awardsQuery = awardsQuery.where('award.resultStatus', '=', resultStatus);
+                }
+                if (minAmount != null) {
+                    awardsQuery = awardsQuery.where('award.amount', '>=', String(minAmount));
+                }
+                if (maxAmount != null) {
+                    awardsQuery = awardsQuery.where('award.amount', '<=', String(maxAmount));
+                }
+                if (contractDateFrom != null) {
+                    awardsQuery = awardsQuery.where('award.contractDate', '>=', new Date(contractDateFrom));
+                }
+                if (contractDateTo != null) {
+                    awardsQuery = awardsQuery.where('award.contractDate', '<=', new Date(contractDateTo));
+                }
 
-            const rows = await awardsQuery.orderBy('award.contractDate', 'desc').orderBy('award.amount', 'desc').limit(limit).execute();
+                const rows = await awardsQuery.orderBy('award.contractDate', 'desc').orderBy('award.amount', 'desc').limit(limit).execute();
 
-            return json({
-                organization: organizationSummary(organization),
-                awards: rows.map((row) => ({
-                    isGroupLead: row.isGroupLead,
-                    award: {
-                        id: row.id,
-                        lotId: row.lotId,
-                        resultStatus: row.resultStatus,
-                        amount: row.amount,
-                        currency: row.currency,
-                        contractTitle: row.contractTitle,
-                        contractDate: row.contractDate,
-                        tendersCount: row.tendersCount,
-                        smeTendersCount: row.smeTendersCount,
-                        frameworkMaxAmount: row.frameworkMaxAmount
-                    },
-                    lot: lotSummary({
-                        id: row.lotRowId,
-                        procurementId: row.procurementId,
-                        lotCode: row.lotCode,
-                        title: row.lotTitle,
-                        status: row.lotStatus,
-                        mainCpv: row.lotMainCpv
-                    }),
-                    procurement: procurementSummary({
-                        id: row.procurementRowId,
-                        rhrId: row.rhrId,
-                        folderId: row.folderId,
-                        title: row.procurementTitle,
-                        status: row.procurementStatus,
-                        type: row.procurementType,
-                        mainCpv: row.procurementMainCpv
-                    })
-                }))
-            });
-        }
+                return json({
+                    organization: organizationSummary(organization),
+                    awards: rows.map((row) => ({
+                        isGroupLead: row.isGroupLead,
+                        award: {
+                            id: row.id,
+                            lotId: row.lotId,
+                            resultStatus: row.resultStatus,
+                            amount: row.amount,
+                            currency: row.currency,
+                            contractTitle: row.contractTitle,
+                            contractDate: row.contractDate,
+                            tendersCount: row.tendersCount,
+                            smeTendersCount: row.smeTendersCount,
+                            frameworkMaxAmount: row.frameworkMaxAmount
+                        },
+                        lot: lotSummary({
+                            id: row.lotRowId,
+                            procurementId: row.procurementId,
+                            lotCode: row.lotCode,
+                            title: row.lotTitle,
+                            status: row.lotStatus,
+                            mainCpv: row.lotMainCpv
+                        }),
+                        procurement: procurementSummary({
+                            id: row.procurementRowId,
+                            rhrId: row.rhrId,
+                            folderId: row.folderId,
+                            title: row.procurementTitle,
+                            status: row.procurementStatus,
+                            type: row.procurementType,
+                            mainCpv: row.procurementMainCpv
+                        })
+                    }))
+                });
+            }
+        )
     );
 
     server.registerTool(
@@ -201,7 +205,7 @@ const registerListTools = (server: McpServer) => {
             inputSchema: listProcurementLotsInputSchema,
             annotations: { readOnlyHint: true }
         },
-        async ({ id, rhrId, folderId, status, limit }) => {
+        loggedTool('list-procurement-lots', async ({ id, rhrId, folderId, status, limit }) => {
             const procurement = await findProcurement({ id, rhrId, folderId });
             if (procurement == null) {
                 return notFound('Procurement');
@@ -230,7 +234,7 @@ const registerListTools = (server: McpServer) => {
                 lots,
                 awards: awardRows.map((row) => awardSummary(row))
             });
-        }
+        })
     );
 };
 

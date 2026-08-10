@@ -1,4 +1,12 @@
 import { db } from '../db';
+import { log } from '../log';
+
+const loggedTool =
+    <A extends unknown[], R>(name: string, handler: (...args: A) => R) =>
+    (...args: A) => {
+        log(`Called tool ${name}`);
+        return handler(...args);
+    };
 
 const json = (data: unknown) => ({
     content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }]
@@ -112,4 +120,4 @@ const awardSummary = (award: AwardSummaryInput) => ({
     contractDate: award.contractDate
 });
 
-export { json, notFound, findOrganization, findProcurement, organizationSummary, procurementSummary, lotSummary, awardSummary };
+export { loggedTool, json, notFound, findOrganization, findProcurement, organizationSummary, procurementSummary, lotSummary, awardSummary };

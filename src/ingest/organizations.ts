@@ -3,8 +3,8 @@ import type { OrganizationCountry } from '../mappings';
 import type { OrganizationDraft } from './drafts';
 import type { XmlNode } from './util';
 import type { Kysely } from 'kysely';
+import { log } from '../log';
 import { createBatch } from './batch';
-import { log } from './log';
 import { mapCountry } from './map';
 import { asItems, get, getNode, getText } from './util';
 

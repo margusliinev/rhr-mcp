@@ -1,5 +1,5 @@
 import type { NoticeDrafts, OrganizationDraft, ProcurementDraft } from './drafts';
-import { log } from './log';
+import { log } from '../log';
 import { mergeNotice } from './merge-notice';
 import { parseNotice } from './parse-notice';
 import { getNoticeRoot, listNoticeFiles } from './util';

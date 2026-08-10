@@ -6,6 +6,7 @@ import {
 } from '@modelcontextprotocol/server';
 import { serve } from 'bun';
 import { env } from './env';
+import { log } from './log';
 import { handler } from './mcp/handler';
 
 const allowedHosts = localhostAllowedHostnames();
@@ -43,4 +44,4 @@ const shutdown = async () => {
 process.on('SIGINT', () => void shutdown());
 process.on('SIGTERM', () => void shutdown());
 
-console.log(`🚀 Server running at ${server.url.href}`);
+log(`Server running at ${server.url.href}`);

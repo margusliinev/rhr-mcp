@@ -1,12 +1,13 @@
 import { db } from '../db';
+import { log } from '../log';
 import { ingestAwards } from './awards';
-import { log } from './log';
 import { loadNoticeDrafts } from './notices';
 import { ingestOrganizations } from './organizations';
 import { ingestProcurements } from './procurements';
 
 const main = async () => {
     const startedAt = Date.now();
+    log('Ingest started');
 
     const { organizationDrafts, procurementDrafts } = await loadNoticeDrafts();
 
