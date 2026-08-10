@@ -1,6 +1,7 @@
 services:
     postgres:
         image: postgres:18
+        container_name: rhr-mcp-postgres
         restart: always
         environment:
             TZ: UTC
@@ -8,9 +9,10 @@ services:
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: postgres
         ports:
-            - '5432:5432'
+            - '5433:5432'
         volumes:
-            - postgres_data:/var/lib/postgresql
+            - rhr_postgres_data:/var/lib/postgresql
+
 volumes:
-    postgres_data:
-        name: postgres_data
+    rhr_postgres_data:
+        name: rhr_postgres_data

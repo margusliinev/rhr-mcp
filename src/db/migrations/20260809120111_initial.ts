@@ -2,6 +2,8 @@ import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 
 const up = async (db: Kysely<unknown>) => {
+    await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`.execute(db);
+
     await db.schema
         .createTable('organization')
         .addColumn('id', 'uuid', (col) => col.primaryKey().notNull())
@@ -12,6 +14,9 @@ const up = async (db: Kysely<unknown>) => {
         .addColumn('createdAt', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
         .addColumn('updatedAt', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
         .execute();
+
+    await sql`CREATE INDEX idx_organization_name_trgm ON organization USING gin ("name" gin_trgm_ops)`.execute(db);
+    await sql`CREATE INDEX idx_organization_registry_trgm ON organization USING gin ("registryCode" gin_trgm_ops)`.execute(db);
 
     await db.schema
         .createTable('procurement')
@@ -38,9 +43,12 @@ const up = async (db: Kysely<unknown>) => {
         .addColumn('updatedAt', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
         .execute();
 
-    await db.schema.createIndex('procurement_rhrId_uidx').on('procurement').column('rhrId').unique().execute();
-    await db.schema.createIndex('procurement_eformsId_uidx').on('procurement').column('eformsId').unique().execute();
-    await db.schema.createIndex('procurement_mainCpv_idx').on('procurement').column('mainCpv').execute();
+    await db.schema.createIndex('uidx_procurement_rhr_id').on('procurement').column('rhrId').unique().execute();
+    await db.schema.createIndex('uidx_procurement_eforms_id').on('procurement').column('eformsId').unique().execute();
+    await db.schema.createIndex('idx_procurement_main_cpv').on('procurement').column('mainCpv').execute();
+    await db.schema.createIndex('idx_procurement_published').on('procurement').columns(['publishedAt', 'title']).execute();
+    await sql`CREATE INDEX idx_procurement_title_trgm ON procurement USING gin ("title" gin_trgm_ops)`.execute(db);
+    await sql`CREATE INDEX idx_procurement_description_trgm ON procurement USING gin ("description" gin_trgm_ops)`.execute(db);
 
     await db.schema
         .createTable('procurementBuyer')
@@ -52,7 +60,7 @@ const up = async (db: Kysely<unknown>) => {
         .addPrimaryKeyConstraint('procurementBuyer_pkey', ['procurementId', 'organizationId'])
         .execute();
 
-    await db.schema.createIndex('procurementBuyer_organizationId_idx').on('procurementBuyer').column('organizationId').execute();
+    await db.schema.createIndex('idx_procurement_buyer_org').on('procurementBuyer').column('organizationId').execute();
 
     await db.schema
         .createTable('lot')
@@ -73,7 +81,7 @@ const up = async (db: Kysely<unknown>) => {
         .addUniqueConstraint('lot_procurementId_lotCode_uidx', ['procurementId', 'lotCode'])
         .execute();
 
-    await db.schema.createIndex('lot_procurementId_idx').on('lot').column('procurementId').execute();
+    await db.schema.createIndex('idx_lot_main_cpv').on('lot').column('mainCpv').execute();
 
     await db.schema
         .createTable('award')
@@ -91,6 +99,8 @@ const up = async (db: Kysely<unknown>) => {
         .addColumn('updatedAt', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
         .execute();
 
+    await db.schema.createIndex('idx_award_date_amount').on('award').columns(['contractDate', 'amount']).execute();
+
     await db.schema
         .createTable('awardSupplier')
         .addColumn('awardId', 'uuid', (col) => col.notNull().references('award.id').onDelete('cascade'))
@@ -101,7 +111,7 @@ const up = async (db: Kysely<unknown>) => {
         .addPrimaryKeyConstraint('awardSupplier_pkey', ['awardId', 'organizationId'])
         .execute();
 
-    await db.schema.createIndex('awardSupplier_organizationId_idx').on('awardSupplier').column('organizationId').execute();
+    await db.schema.createIndex('idx_award_supplier_org').on('awardSupplier').column('organizationId').execute();
 };
 
 const down = async (db: Kysely<unknown>) => {
