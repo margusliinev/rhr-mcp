@@ -22,21 +22,34 @@ Download the public datasets from:
 
 https://riigihanked.riik.ee/rhr-web/#/open-data
 
-Unzip them into the `data/` folder at the project root, keeping the year folders. Ingest expects files like:
+Place the unzipped files directly in the `data/` folder at the project root. For example, a full year looks like:
 
-```text
-data/
-  2025/
-    HT_2025_1.xml
-    HLST_2025_1.xml
-    …
-  2026/
-    HT_2026_1.xml
-    HLST_2026_1.xml
-    …
-```
+- `HT_2025_1.xml`
+- `HT_2025_2.xml`
+- `HT_2025_3.xml`
+- `HT_2025_4.xml`
+- `HT_2025_5.xml`
+- `HT_2025_6.xml`
+- `HT_2025_7.xml`
+- `HT_2025_8.xml`
+- `HT_2025_9.xml`
+- `HT_2025_10.xml`
+- `HT_2025_11.xml`
+- `HT_2025_12.xml`
+- `HLST_2025_1.xml`
+- `HLST_2025_2.xml`
+- `HLST_2025_3.xml`
+- `HLST_2025_4.xml`
+- `HLST_2025_5.xml`
+- `HLST_2025_6.xml`
+- `HLST_2025_7.xml`
+- `HLST_2025_8.xml`
+- `HLST_2025_9.xml`
+- `HLST_2025_10.xml`
+- `HLST_2025_11.xml`
+- `HLST_2025_12.xml`
 
-`HT_*.xml` files are contract notices. `HLST_*.xml` files are contract award notices.
+`HT_*.xml` files are contract notices. `HLST_*.xml` files are contract award notices. Add any year the same way (`HT_2024_1.xml`, `HT_2027_1.xml`, and so on) — ingest picks up every matching file in `data/`.
 
 ## Getting Started
 

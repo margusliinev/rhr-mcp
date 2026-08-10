@@ -6,12 +6,6 @@ type NoticeFile = {
     kind: 'ht' | 'hlst';
 };
 
-type NoticeFileNameParts = {
-    kind: number;
-    year: number;
-    month: number;
-};
-
 const isXmlNode = (value: unknown): value is XmlNode => value != null && typeof value === 'object' && !Array.isArray(value);
 
 const text = (value: unknown): string | null => {
@@ -169,38 +163,45 @@ const noticeRank = (versionId: string | null, issuedAt: Date | null) => {
 
 const dataPath = (...parts: string[]) => `${import.meta.dirname}/../../data/${parts.join('/')}`;
 
-const parseNoticeFileName = (name: string): NoticeFileNameParts => {
+const parseNoticeFileName = (name: string) => {
     const match = /^(?<kind>HT|HLST)_(?<year>\d{4})_(?<month>\d{1,2})\.xml$/u.exec(name);
+    if (match?.groups == null) {
+        return null;
+    }
+
     return {
-        kind: match?.groups?.['kind'] === 'HLST' ? 1 : 0,
-        year: Number(match?.groups?.['year'] ?? 0),
-        month: Number(match?.groups?.['month'] ?? 0)
+        kind: match.groups['kind'] === 'HLST' ? 1 : 0,
+        year: Number(match.groups['year']),
+        month: Number(match.groups['month'])
     };
 };
 
 const compareNoticeFileNames = (leftName: string, rightName: string) => {
     const left = parseNoticeFileName(leftName);
     const right = parseNoticeFileName(rightName);
+    if (left == null || right == null) {
+        return leftName.localeCompare(rightName);
+    }
     return left.year - right.year || left.month - right.month || left.kind - right.kind || leftName.localeCompare(rightName);
 };
 
 const listNoticeFiles = async () => {
     const root = dataPath();
-    const yearEntries = await Array.fromAsync(new Bun.Glob('*').scan({ cwd: root, onlyFiles: false }));
-    const years = yearEntries.filter((name) => /^\d{4}$/u.test(name)).toSorted();
+    const xmlEntries = await Array.fromAsync(new Bun.Glob('*.xml').scan({ cwd: root }));
+    const names = xmlEntries.toSorted(compareNoticeFileNames);
 
     const files: NoticeFile[] = [];
 
-    for (const year of years) {
-        const xmlEntries = await Array.fromAsync(new Bun.Glob('*.xml').scan({ cwd: dataPath(year) }));
-        const names = xmlEntries.toSorted(compareNoticeFileNames);
+    for (const name of names) {
+        const parts = parseNoticeFileName(name);
+        if (parts == null) {
+            continue;
+        }
 
-        for (const name of names) {
-            if (name.startsWith('HT_')) {
-                files.push({ path: dataPath(year, name), tag: 'ContractNotice', kind: 'ht' });
-            } else if (name.startsWith('HLST_')) {
-                files.push({ path: dataPath(year, name), tag: 'ContractAwardNotice', kind: 'hlst' });
-            }
+        if (name.startsWith('HT_')) {
+            files.push({ path: dataPath(name), tag: 'ContractNotice', kind: 'ht' });
+        } else if (name.startsWith('HLST_')) {
+            files.push({ path: dataPath(name), tag: 'ContractAwardNotice', kind: 'hlst' });
         }
     }
 
