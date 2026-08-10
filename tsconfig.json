@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "noPropertyAccessFromIndexSignature": true,
+        "forceConsistentCasingInFileNames": true,
+        "rewriteRelativeImportExtensions": true,
+        "noUncheckedSideEffectImports": true,
+        "noFallthroughCasesInSwitch": true,
+        "exactOptionalPropertyTypes": true,
+        "allowImportingTsExtensions": true,
+        "noUncheckedIndexedAccess": true,
+        "verbatimModuleSyntax": true,
+        "allowUnreachableCode": false,
+        "allowUnusedLabels": false,
+        "noUnusedParameters": true,
+        "erasableSyntaxOnly": true,
+        "noImplicitOverride": true,
+        "resolveJsonModule": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "strict": true,
+        "moduleResolution": "bundler",
+        "moduleDetection": "force",
+        "module": "Preserve",
+        "rootDir": "./src",
+        "target": "ESNext",
+        "lib": ["ESNext"],
+        "types": ["bun"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "coverage", "build", "dist", "data", "temp", "tmp", "out"]
+}
