@@ -11,34 +11,28 @@ type OrganizationTable = {
     name: string;
     city: string | null;
     country: string | null;
-    street: string | null;
-    postalZone: string | null;
-    website: string | null;
-    sizeCode: string | null;
 } & Timestamps;
 
 type ProcurementTable = {
     id: string;
     rhrId: string | null;
-    eformsId: string | null;
     folderId: string;
+    eformsId: string | null;
     title: string;
     description: string | null;
+    status: string | null;
     type: string | null;
     procedureCode: string | null;
     mainCpv: string | null;
     estimatedValue: string | null;
     currency: string | null;
     frameworkType: string | null;
-    regulatoryDomain: string | null;
     buyerActivity: string | null;
     periodStart: Date | null;
     periodEnd: Date | null;
-    durationMonths: number | null;
     submissionDeadline: Date | null;
-    status: string | null;
-    publishedAt: Date | null;
     documentsUrl: string | null;
+    publishedAt: Date | null;
 } & Timestamps;
 
 type ProcurementBuyerTable = {
@@ -53,13 +47,13 @@ type LotTable = {
     lotCode: string;
     title: string | null;
     description: string | null;
+    status: string | null;
     mainCpv: string | null;
     estimatedValue: string | null;
     currency: string | null;
-    submissionDeadline: Date | null;
     nutsCode: string | null;
     locationText: string | null;
-    status: string | null;
+    submissionDeadline: Date | null;
 } & Timestamps;
 
 type AwardTable = {
@@ -68,10 +62,10 @@ type AwardTable = {
     resultStatus: string | null;
     amount: string | null;
     currency: string | null;
-    tendersCount: number | null;
-    smeTendersCount: number | null;
     contractTitle: string | null;
     contractDate: Date | null;
+    tendersCount: number | null;
+    smeTendersCount: number | null;
     frameworkMaxAmount: string | null;
 } & Timestamps;
 
