@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { registerGetTools } from './get';
-import { registerListTools } from './list';
 import { registerSearchTools } from './search';
+import { registerListTools } from './list';
+import { registerGetTools } from './get';
 
 const registerTools = (server: McpServer) => {
     registerGetTools(server);

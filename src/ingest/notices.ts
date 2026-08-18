@@ -1,9 +1,9 @@
 import type { NoticeDrafts, OrganizationDraft, ProcurementDraft } from './drafts';
-import { log } from '../log';
+import { getNoticeRoot, listNoticeFiles } from './util';
 import { mergeNotice } from './merge-notice';
 import { parseNotice } from './parse-notice';
-import { getNoticeRoot, listNoticeFiles } from './util';
 import { iterateXmlRecords } from './xml';
+import { log } from '../lib/log';
 
 const loadNoticeDrafts = async () => {
     const organizationDrafts = new Map<string, OrganizationDraft>();

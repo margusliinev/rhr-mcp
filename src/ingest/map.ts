@@ -10,8 +10,8 @@ import {
     procurementProcedureMapping,
     procurementTypeMapping
 } from '../mappings';
-import { isKeyOf, isOneOf } from './is-key-of';
 import { get, getAttr, getText, text } from './util';
+import { isKeyOf, isOneOf } from './is-key-of';
 
 const textOrNull = (value: unknown) => text(value);
 

@@ -1,3 +1,4 @@
+import type { Generated, Insertable, Selectable } from 'kysely';
 import type {
     AwardResultStatus,
     Currency,
@@ -10,7 +11,6 @@ import type {
     ProcurementStatus,
     ProcurementType
 } from '../mappings';
-import type { Generated, Insertable, Selectable } from 'kysely';
 
 type Timestamps = {
     createdAt: Generated<Date>;

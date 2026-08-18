@@ -1,5 +1,4 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { db } from '../../db';
 import { getAwardInputSchema, getOrganizationInputSchema, getProcurementInputSchema } from '../schemas/get';
 import {
     awardSummary,
@@ -12,6 +11,7 @@ import {
     procurementSummary,
     loggedTool
 } from '../util';
+import { db } from '../../db';
 
 const registerGetTools = (server: McpServer) => {
     server.registerTool(

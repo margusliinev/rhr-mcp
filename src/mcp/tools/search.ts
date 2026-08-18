@@ -1,8 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { sql } from 'kysely';
-import { db } from '../../db';
 import { searchAwardsInputSchema, searchOrganizationsInputSchema, searchProcurementsInputSchema } from '../schemas/search';
 import { json, lotSummary, procurementSummary, loggedTool } from '../util';
+import { sql } from 'kysely';
+import { db } from '../../db';
 
 const registerSearchTools = (server: McpServer) => {
     server.registerTool(

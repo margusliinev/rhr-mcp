@@ -3,10 +3,10 @@ import type { OrganizationCountry } from '../mappings';
 import type { OrganizationDraft } from './drafts';
 import type { XmlNode } from './util';
 import type { Kysely } from 'kysely';
-import { log } from '../log';
+import { asItems, get, getNode, getText } from './util';
 import { createBatch } from './batch';
 import { mapCountry } from './map';
-import { asItems, get, getNode, getText } from './util';
+import { log } from '../lib/log';
 
 const NOISE_REGISTRY_CODES = new Set(['TED64', '1000123']);
 

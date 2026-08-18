@@ -1,24 +1,22 @@
 import type { Database } from './schema';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import { SQL } from 'bun';
-import { Kysely } from 'kysely';
-import { PostgresJSDialect } from 'kysely-postgres-js';
 import { FileMigrationProvider, Migrator } from 'kysely/migration';
-import { env } from '../env';
+import { PostgresJSDialect } from 'kysely-postgres-js';
+import { promises as fs } from 'node:fs';
+import { Kysely } from 'kysely';
+import { env } from '../lib/env';
+import { SQL } from 'bun';
+import path from 'node:path';
 
-const db = new Kysely<Database>({
-    dialect: new PostgresJSDialect({
-        postgres: new SQL(env.DATABASE_URL, { max: 1 })
-    })
-});
+const postgres = new SQL(env.DATABASE_URL, { max: 1 });
+const dialect = new PostgresJSDialect({ postgres });
+const db = new Kysely<Database>({ dialect });
 
 const migrator = new Migrator({
     db,
     provider: new FileMigrationProvider({
         fs,
-        path,
-        migrationFolder: path.join(import.meta.dirname, 'migrations')
+        migrationFolder: path.join(import.meta.dirname, 'migrations'),
+        path
     })
 });
 

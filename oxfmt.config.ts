@@ -9,9 +9,6 @@ export default defineConfig({
     tabWidth: 4,
     insertFinalNewline: true,
     sortPackageJson: true,
-    sortImports: {
-        newlinesBetween: false,
-        groups: ['type', 'builtin', 'external', ['internal', 'subpath'], ['parent', 'sibling', 'index'], 'style', 'unknown']
-    },
+    sortImports: false,
     ignorePatterns: ['node_modules/**', 'coverage/**', 'build/**', 'dist/**', 'data/**', 'temp/**', 'tmp/**', 'out/**']
 });

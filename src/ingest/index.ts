@@ -1,9 +1,9 @@
-import { db } from '../db';
-import { log } from '../log';
-import { ingestAwards } from './awards';
-import { loadNoticeDrafts } from './notices';
 import { ingestOrganizations } from './organizations';
 import { ingestProcurements } from './procurements';
+import { loadNoticeDrafts } from './notices';
+import { ingestAwards } from './awards';
+import { log } from '../lib/log';
+import { db } from '../db';
 
 const main = async () => {
     const startedAt = Date.now();

@@ -1,5 +1,5 @@
+import { log } from '../lib/log';
 import { db } from '../db';
-import { log } from '../log';
 
 const loggedTool =
     <A extends unknown[], R>(name: string, handler: (...args: A) => R) =>

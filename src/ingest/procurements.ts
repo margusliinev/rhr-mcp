@@ -3,10 +3,10 @@ import type { BuyerDraft, OrganizationDraft, ProcurementDraft } from './drafts';
 import type { ParsedOrganization } from './organizations';
 import type { XmlNode } from './util';
 import type { Kysely } from 'kysely';
-import { log } from '../log';
-import { createBatch } from './batch';
 import { mapBuyerActivity, mapBuyerType, mapCurrency, mapFrameworkType, mapProcedure, textOrNull } from './map';
 import { asItems, get, getAttr, getCodedText, getNode, getText, parseInstant } from './util';
+import { createBatch } from './batch';
+import { log } from '../lib/log';
 
 const parseLotsFromProject = (notice: XmlNode) => {
     const lots = new Map<

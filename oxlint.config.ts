@@ -15,22 +15,14 @@ export default defineConfig({
         node: true
     },
     options: {
-        typeAware: true,
-        typeCheck: true,
         denyWarnings: true,
         reportUnusedDisableDirectives: 'error'
     },
     rules: {
         'typescript/array-type': ['error', { default: 'array-simple' }],
         'typescript/consistent-type-definitions': ['error', 'type'],
-        'typescript/prefer-readonly-parameter-types': 'off',
         'typescript/explicit-module-boundary-types': 'off',
         'typescript/explicit-function-return-type': 'off',
-        'typescript/strict-boolean-expressions': 'off',
-        'typescript/no-unsafe-member-access': 'off',
-        'typescript/promise-function-async': 'off',
-        'typescript/no-unsafe-assignment': 'off',
-        'typescript/no-unsafe-call': 'off',
 
         'eslint/max-lines-per-function': 'off',
         'eslint/no-duplicate-imports': 'off',
@@ -88,6 +80,10 @@ export default defineConfig({
         {
             files: ['**/*.config.*'],
             rules: { 'import/no-default-export': 'off' }
+        },
+        {
+            files: ['src/server.ts'],
+            rules: { 'unicorn/no-process-exit': 'off' }
         },
         {
             files: ['src/db/migrate.ts'],

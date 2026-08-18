@@ -1,13 +1,11 @@
 import type { Database } from './schema';
-import { SQL } from 'bun';
-import { Kysely } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
-import { env } from '../env';
+import { Kysely } from 'kysely';
+import { env } from '../lib/env';
+import { SQL } from 'bun';
 
-const db = new Kysely<Database>({
-    dialect: new PostgresJSDialect({
-        postgres: new SQL(env.DATABASE_URL, { max: 10 })
-    })
-});
+const postgres = new SQL(env.DATABASE_URL, { max: 10 });
+const dialect = new PostgresJSDialect({ postgres });
+const db = new Kysely<Database>({ dialect });
 
 export { db };

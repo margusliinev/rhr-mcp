@@ -4,10 +4,11 @@ import {
     localhostAllowedOrigins,
     originValidationResponse
 } from '@modelcontextprotocol/server';
-import { serve } from 'bun';
-import { env } from './env';
-import { log } from './log';
 import { handler } from './mcp/handler';
+import { serve } from 'bun';
+import { env } from './lib/env';
+import { log } from './lib/log';
+import { db } from './db/index';
 
 const allowedHosts = localhostAllowedHostnames();
 const allowedOrigins = localhostAllowedOrigins();
@@ -16,7 +17,7 @@ const server = serve({
     port: env.PORT,
     development: env.NODE_ENV !== 'production',
     routes: {
-        '/healthz': new Response('OK'),
+        '/health': new Response('OK'),
         '/mcp': (request) => {
             const hostError = hostHeaderValidationResponse(request, allowedHosts);
             if (hostError) return hostError;
@@ -37,8 +38,10 @@ const server = serve({
 });
 
 const shutdown = async () => {
-    await handler.close();
     await server.stop();
+    await handler.close();
+    await db.destroy();
+    process.exit(0);
 };
 
 process.on('SIGINT', () => void shutdown());
