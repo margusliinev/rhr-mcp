@@ -1,15 +1,3 @@
-const parseXml = (xml: string): unknown => {
-    const xmlApi = Reflect.get(Bun, 'XML');
-    if (xmlApi == null || typeof xmlApi !== 'object' || !('parse' in xmlApi)) {
-        throw new TypeError('Bun.XML is unavailable');
-    }
-    const parse = Reflect.get(xmlApi, 'parse');
-    if (typeof parse !== 'function') {
-        throw new TypeError('Bun.XML.parse is unavailable');
-    }
-    return parse.call(xmlApi, xml);
-};
-
 const isTagOpenBoundary = (char: string | undefined) =>
     char === '>' || char === ' ' || char === '\n' || char === '\r' || char === '\t' || char === '/';
 
@@ -47,7 +35,7 @@ async function* iterateXmlRecords(filePath: string, tag: string) {
             }
             const recordXml = buffer.slice(0, end + close.length);
             buffer = buffer.slice(end + close.length);
-            yield parseXml(recordXml);
+            yield Bun.XML.parse(recordXml);
         }
     }
 
